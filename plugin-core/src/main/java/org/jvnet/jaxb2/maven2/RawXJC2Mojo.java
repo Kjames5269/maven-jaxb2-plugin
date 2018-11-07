@@ -99,7 +99,9 @@ public abstract class RawXJC2Mojo<O> extends AbstractXJC2Mojo<O> {
 
 	private List<URL> xjcPluginURLs;
 
-	public Collection<Artifact> getXjcPluginArtifacts() {
+        private static List<File> updatedDirectories = new LinkedList<>();
+
+        public Collection<Artifact> getXjcPluginArtifacts() {
 		return xjcPluginArtifacts;
 	}
 
@@ -958,6 +960,12 @@ public abstract class RawXJC2Mojo<O> extends AbstractXJC2Mojo<O> {
 		getLog().debug(MessageFormat.format("Up-to-date check for source resources [{0}] and target resources [{1}].",
 				dependsURIs, producesURIs));
 
+		if(updatedDirectories.contains(getGenerateDirectory())) {
+			getLog().debug(MessageFormat.format("[{0}] might have been modified but was updated by this plugin.",
+							    getGenerateDirectory()));
+			return false;
+		}
+
 		boolean itIsKnownThatNoDependsURIsWereChanged = true;
 		{
 			for (URI dependsURI : dependsURIs) {
@@ -1003,12 +1011,14 @@ public abstract class RawXJC2Mojo<O> extends AbstractXJC2Mojo<O> {
 
 		if (dependsTimestamp == null) {
 			getLog().debug("Latest timestamp of the source resources is unknown. Assuming that something was changed.");
+			updatedDirectories.add(getGenerateDirectory());
 			return false;
 		}
 		if (producesTimestamp == null) {
 			getLog().debug(MessageFormat.format(
 					"Latest Timestamp of the source resources is [{0,date,yyyy-MM-dd HH:mm:ss.SSS}], however the earliest timestamp of the target resources is unknown. Assuming that something was changed.",
 					dependsTimestamp));
+			updatedDirectories.add(getGenerateDirectory());
 			return false;
 		}
 
@@ -1016,6 +1026,9 @@ public abstract class RawXJC2Mojo<O> extends AbstractXJC2Mojo<O> {
 				"Latest timestamp of the source resources is [{0,date,yyyy-MM-dd HH:mm:ss.SSS}], earliest timestamp of the target resources is [{1,date,yyyy-MM-dd HH:mm:ss.SSS}].",
 				dependsTimestamp, producesTimestamp));
 		final boolean upToDate = dependsTimestamp < producesTimestamp;
+		if(!upToDate) {
+			updatedDirectories.add(getGenerateDirectory());
+		}
 		return upToDate;
 	}
 
